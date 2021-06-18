@@ -5,10 +5,10 @@ RUN apt-get update \
   curl \
   ca-certificates \
   python3 \
-  && curl -fsSL https://download.litecoin.org/litecoin-0.17.1/linux/litecoin-0.18.1-x86_64-linux-gnu.tar.gz \
+  && curl -fsSL https://download.litecoin.org/litecoin-0.18.1/linux/litecoin-0.18.1-x86_64-linux-gnu.tar.gz \
   -o /tmp/litecoin.tar.gz \
   && echo $(\
-  curl -fsSL https://download.litecoin.org/litecoin-0.17.1/linux/litecoin-0.18.1-linux-signatures.asc | \
+  curl -fsSL https://download.litecoin.org/litecoin-0.18.1/linux/litecoin-0.18.1-linux-signatures.asc | \
   grep litecoin-0.18.1-x86_64-linux-gnu.tar.gz | awk '{print $1}' \
   ) /tmp/litecoin.tar.gz | \
   sha256sum -c --strict - \
