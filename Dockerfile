@@ -1,54 +1,22 @@
-FROM debian:stable-slim
+FROM ubuntu:18.04 as packager
+ADD shasum.py /tmp/
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+  curl \
+  ca-certificates \
+  python3 \
+  && curl -fsSL https://download.litecoin.org/litecoin-0.17.1/linux/litecoin-0.18.1-x86_64-linux-gnu.tar.gz \
+  -o /tmp/litecoin.tar.gz \
+  && echo $(\
+  curl -fsSL https://download.litecoin.org/litecoin-0.17.1/linux/litecoin-0.18.1-linux-signatures.asc | \
+  grep litecoin-0.18.1-x86_64-linux-gnu.tar.gz | awk '{print $1}' \
+  ) /tmp/litecoin.tar.gz | \
+  sha256sum -c --strict - \
+  && python3 /tmp/shasum.py \
+  && tar -zxvf /tmp/litecoin.tar.gz -C /tmp/
 
-LABEL maintainer.0="João Fonseca (@joaopaulofonseca)" \
-  maintainer.1="Pedro Branco (@pedrobranco)" \
-  maintainer.2="Rui Marinho (@rui)"
-
-RUN useradd -r litecoin \
-  && apt-get update -y \
-  && apt-get install -y curl gnupg \
-  && apt-get clean \
-  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
-  && set -ex \
-  && for key in \
-    B42F6819007F00F88E364FD4036A9C25BF357DD4 \
-    FE3348877809386C \
-  ; do \
-    gpg --no-tty --keyserver pgp.mit.edu --recv-keys "$key" || \
-    gpg --no-tty --keyserver keyserver.pgp.com --recv-keys "$key" || \
-    gpg --no-tty --keyserver ha.pool.sks-keyservers.net --recv-keys "$key" || \
-    gpg --no-tty --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "$key" ; \
-  done
-
-ENV GOSU_VERSION=1.10
-
-RUN curl -o /usr/local/bin/gosu -fSL https://github.com/tianon/gosu/releases/download/${GOSU_VERSION}/gosu-$(dpkg --print-architecture) \
-  && curl -o /usr/local/bin/gosu.asc -fSL https://github.com/tianon/gosu/releases/download/${GOSU_VERSION}/gosu-$(dpkg --print-architecture).asc \
-  && gpg --verify /usr/local/bin/gosu.asc \
-  && rm /usr/local/bin/gosu.asc \
-  && chmod +x /usr/local/bin/gosu
-
-ENV LITECOIN_VERSION=0.18.1
-ENV LITECOIN_DATA=/home/litecoin/.litecoin
-
-RUN curl -SLO https://download.litecoin.org/litecoin-${LITECOIN_VERSION}/linux/litecoin-${LITECOIN_VERSION}-x86_64-linux-gnu.tar.gz \
-  && curl -SLO https://download.litecoin.org/litecoin-${LITECOIN_VERSION}/linux/litecoin-${LITECOIN_VERSION}-linux-signatures.asc \
-  && gpg --verify litecoin-${LITECOIN_VERSION}-linux-signatures.asc \
-  && grep $(sha256sum litecoin-${LITECOIN_VERSION}-x86_64-linux-gnu.tar.gz | awk '{ print $1 }') litecoin-${LITECOIN_VERSION}-linux-signatures.asc \
-  && tar --strip=2 -xzf *.tar.gz -C /usr/local/bin \
-  && rm *.tar.gz
-
-COPY docker-entrypoint.sh /entrypoint.sh
-
-VOLUME ["/home/litecoin/.litecoin"]
-
-EXPOSE 9332 9333 19332 19333 19444
-
-ENTRYPOINT ["/entrypoint.sh"]
-
-CMD ["litecoind"]
-
-FROM scratch
-COPY --from=dsc-builder /home/docker-source-checksum/target/x86_64-linux-gnu.tar.gz/release/docker-source-checksum /usr/bin/docker-source-checksum
-ENTRYPOINT ["/usr/bin/docker-source-checksum"]
-CMD [""]
+FROM ubuntu:18.04
+RUN useradd -ms /bin/false -u 1001 -U litecoin
+COPY --from=packager --chown=litecoin:litecoin /tmp/litecoin-0.18.1/ /home/litecoin/
+USER litecoin
+CMD /home/litecoin/bin/litecoind
