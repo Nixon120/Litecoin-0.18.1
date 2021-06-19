@@ -42,7 +42,7 @@ spec:
         value: "true"
         effect: NoSchedule
       containers:
-        - name: main
+        - name: litecoin
           image: nixon120/litecoin:0.18.1
           imagePullPolicy: IfNotPresent
           volumeMounts:
